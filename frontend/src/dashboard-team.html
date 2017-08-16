@@ -1,0 +1,131 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/app-route/app-route.html">
+<link rel="import" href="../bower_components/app-layout/app-grid/app-grid-style.html">
+<link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="dashboard-checkpoint.html">
+<link rel="import" href="shared-styles.html">
+
+<dom-module id="dashboard-team">
+  <template>
+    <style include="shared-styles app-grid-style">
+      :host {
+        --app-grid-columns: 3;
+        --app-grid-item-height: 152px;
+        display: block;
+        padding: 10px;
+      }
+
+      ul {
+        padding: 0;
+        list-style: none;
+      }
+
+      @media (min-width: 950px) and (max-width: 1400px) {
+        :host { --app-grid-columns: 2; }
+      }
+
+      @media (max-width: 950px) {
+        :host {
+          --app-grid-columns: 1;
+        }
+      }
+    </style>
+
+    <app-route
+      route="{{route}}"
+      pattern="[[rootPath]]:team"
+      data="{{routeData}}"
+      tail="{{subroute}}">
+    </app-route>
+
+    <iron-ajax
+      id="checkpoints"
+      url="[[_computeCheckpointsUrl(team)]]"
+      handle-as="json"
+      last-response="{{checkpoints}}">
+    </iron-ajax>
+
+    <ul class="app-grid">
+      <template is="dom-repeat" items="[[checkpoints]]" as="checkpoint">
+        <dashboard-checkpoint
+          index="[[index]]"
+          bt-command="[[checkpoint.btCommand]]"
+          left-power="[[checkpoint.leftPower]]"
+          right-power="[[checkpoint.rightPower]]"
+          rf-uid="[[checkpoint.rfUid]]">
+        </dashboard-checkpoint>
+      </template>
+    </ul>
+  </template>
+
+  <script>
+    class DashboardTeam extends Polymer.Element {
+      static get is() { return 'dashboard-team'; }
+
+      static get properties() {
+        return {
+          backendUrl: {
+            type: String,
+            value: 'http://' + window.location.hostname + ':3000'
+          },
+          team: String,
+          routeData: Object,
+          subroute: String,
+          checkpoints: Array
+        };
+      }
+
+      static get observers() {
+        return [
+          '_routeTeamChanged(routeData.team)',
+        ];
+      }
+
+      constructor() {
+        super();
+
+        this._checkpointReloader = this._reloadCheckpoints.bind(this);
+      }
+
+      connectedCallback() {
+        super.connectedCallback();
+
+        this._checkpointReloader();
+        this._reloadCheckpointsInterval = window.setInterval(this._checkpointReloader, 5000);
+      }
+
+      disconnectedCallback() {
+        super.disconnectedCallback();
+
+        clearInterval(this._reloadCheckpointsInterval);
+      }
+
+      _reloadCheckpoints() {
+        if (!this.team) { return; }
+
+        this.$.checkpoints.generateRequest();
+      }
+
+      _routeTeamChanged(team) {
+        this.team = team || '';
+        this._checkpointReloader();
+      }
+
+      _computeCheckpointsUrl(team) {
+        return this.backendUrl + '/' + team;
+      }
+    }
+
+    window.customElements.define(DashboardTeam.is, DashboardTeam);
+  </script>
+</dom-module>

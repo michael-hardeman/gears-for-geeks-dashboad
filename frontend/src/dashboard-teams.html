@@ -1,0 +1,132 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="../bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../bower_components/paper-listbox/paper-listbox.html">
+<link rel="import" href="../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../bower_components/paper-item/paper-item.html">
+<link rel="import" href="shared-styles.html">
+
+<dom-module id="dashboard-teams">
+  <template>
+    <style include="shared-styles iron-flex iron-flex-alignment">
+      :host {
+        display: block;
+        padding: 10px;
+      }
+    </style>
+
+    <iron-ajax
+      id="delete"
+      method="DELETE"
+      handle-as="json"
+      on-response="_handleUserDeleted"
+      on-error="_handleUserDeletionError">
+    </iron-ajax>
+
+    <iron-ajax
+      id="post"
+      method="POST"
+      handle-as="json"
+      on-response="_handleUserCreated"
+      on-error="_handleUserCreationError">
+    </iron-ajax>
+
+    <div class="card">
+      <h1>Teams</h1>
+
+      <paper-input
+        id="teamInput"
+        label="New Team"
+        value="{{_newTeam}}"
+        error-message="Every team needs a name!"
+        required>
+        <paper-icon-button slot="suffix" icon="icons:add" on-tap="_addTeam"></paper-icon-button>
+      </paper-input>
+
+      <paper-listbox>
+        <template is="dom-repeat" items="[[teams]]" as="team">
+          <paper-item>
+            <span class="flex">[[team]]</span>
+            <paper-icon-button icon="icons:delete" on-tap="_deleteTeam" index="[[index]]"></paper-icon-button>
+          </paper-item>
+        </template>
+      </paper-listbox>
+    </div>
+  </template>
+
+  <script>
+    class DashboardTeams extends Polymer.Element {
+      static get is() { return 'dashboard-teams'; }
+
+      static get properties() {
+        return {
+          backendUrl: {
+            type: String,
+            value: 'http://' + window.location.hostname + ':3000'
+          },
+          _newTeam: String,
+          teams: Array
+        };
+      }
+
+      _addTeam() {
+        if (!this.$.teamInput.validate()) { return; }
+
+        this.$.post.url = this.backendUrl + '/' + this._newTeam;
+        this.$.post.generateRequest();
+      }
+
+      _deleteTeam(event) {
+        this.$.delete.url = this.backendUrl + '/' + this.teams[event.currentTarget.index];
+        this.$.delete.generateRequest();
+      }
+
+      _handleUserCreated(event) {
+        this.dispatchEvent(new CustomEvent('reload-teams', {bubbles: true, composed: true}));
+
+        this.dispatchEvent(new CustomEvent('show-toast', {detail: {
+          type: 'success',
+          text: 'Team successfully created!'
+        }, bubbles: true, composed: true}));
+      }
+
+      _handleUserDeleted() {
+        this.dispatchEvent(new CustomEvent('reload-teams', {bubbles: true, composed: true}));
+
+        this.dispatchEvent(new CustomEvent('show-toast', {detail: {
+          type: 'success',
+          text: 'Team successfully deleted!'
+        }, bubbles: true, composed: true}));
+      }
+
+      _handleUserCreationError() {
+        this.dispatchEvent(new CustomEvent('show-toast', {detail: {
+          type: 'error',
+          text: 'Team already exists!'
+        }, bubbles: true, composed: true}));
+      }
+
+      _handleUserDeletionError() {
+        this.dispatchEvent(new CustomEvent('show-toast', {detail: {
+          type: 'error',
+          text:'Team could not be deleted!'
+        }, bubbles: true, composed: true}));
+      }
+
+    }
+
+    window.customElements.define(DashboardTeams.is, DashboardTeams);
+  </script>
+</dom-module>

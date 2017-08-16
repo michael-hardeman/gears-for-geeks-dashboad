@@ -1,0 +1,223 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/app-layout/app-drawer/app-drawer.html">
+<link rel="import" href="../bower_components/app-layout/app-drawer-layout/app-drawer-layout.html">
+<link rel="import" href="../bower_components/app-layout/app-header/app-header.html">
+<link rel="import" href="../bower_components/app-layout/app-header-layout/app-header-layout.html">
+<link rel="import" href="../bower_components/app-layout/app-scroll-effects/app-scroll-effects.html">
+<link rel="import" href="../bower_components/app-layout/app-toolbar/app-toolbar.html">
+<link rel="import" href="../bower_components/app-route/app-location.html">
+<link rel="import" href="../bower_components/app-route/app-route.html">
+<link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="../bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="../bower_components/iron-icons/social-icons.html">
+<link rel="import" href="../bower_components/iron-pages/iron-pages.html">
+<link rel="import" href="../bower_components/paper-listbox/paper-listbox.html">
+<link rel="import" href="../bower_components/paper-item/paper-item.html">
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../bower_components/paper-toast/paper-toast.html">
+<link rel="import" href="dashboard-icons.html">
+
+<link rel="lazy-import" href="dashboard-teams.html">
+<link rel="lazy-import" href="dashboard-team.html">
+<link rel="lazy-import" href="dashboard-404.html">
+
+<dom-module id="dashboard-app">
+  <template>
+    <style>
+      :host {
+        --app-primary-color: #4285f4;
+        --app-secondary-color: black;
+
+        display: block;
+      }
+
+      app-drawer-layout:not([narrow]) [drawer-toggle] {
+        display: none;
+      }
+
+      app-header {
+        color: #fff;
+        background-color: var(--app-primary-color);
+      }
+
+      app-header paper-icon-button {
+        --paper-icon-button-ink-color: white;
+      }
+
+      #drawer a {
+        text-decoration: none;
+        color: var(--app-secondary-color);
+        outline: none;
+      }
+
+      paper-toast#success {
+        background-color: var(--paper-green-500);
+        color: var(--paper-grey-100);
+      }
+
+      paper-toast#error {
+        background-color: var(--paper-red-500);
+        color: var(--paper-grey-100);
+      }
+    </style>
+
+    <iron-ajax
+      id="teams"
+      url="[[backendUrl]]/teams"
+      handle-as="json"
+      last-response="{{teams}}"
+      auto>
+    </iron-ajax>
+
+    <app-location route="{{route}}" url-space-regex="^[[rootPath]]"></app-location>
+    <app-route
+      route="{{route}}"
+      pattern="[[rootPath]]:page"
+      data="{{routeData}}"
+      tail="{{subroute}}">
+    </app-route>
+
+    <app-drawer-layout fullbleed narrow="{{narrow}}">
+      <!-- Drawer content -->
+      <app-drawer id="drawer" slot="drawer" swipe-open="[[narrow]]">
+        <app-toolbar>Menu</app-toolbar>
+        <paper-listbox selected="[[page]]" attr-for-selected="name" class="drawer-list" role="navigation">
+          <a name="teams" href="[[rootPath]]teams"><paper-item><iron-icon icon="social:people"></iron-icon>Teams</paper-item></a>
+          <template is="dom-repeat" items="[[teams]]" as="team">
+            <a name="[[team]]" href="[[rootPath]]team/[[team]]"><paper-item>[[_increment(index)]]. [[team]]</paper-item></a>
+          </template>
+        </paper-listbox>
+      </app-drawer>
+
+      <!-- Main content -->
+      <app-header-layout has-scrolling-region>
+
+        <app-header slot="header" condenses reveapp-toolbar>
+        <iron-selector selected="[[page]]" attr-for-selected="name" class="drawer-list" role="navigation">
+          <a name="view1" hals effects="waterfall">
+          <app-toolbar>
+            <paper-icon-button icon="my-icons:menu" drawer-toggle></paper-icon-button>
+            <div main-title>Gears 4 Geeks Dashboard</div>
+          </app-toolbar>
+        </app-header>
+
+        <iron-pages
+            selected="[[page]]"
+            attr-for-selected="name"
+            fallback-selection="404"
+            role="main">
+          <dashboard-teams name="teams" teams="[[teams]]"></dashboard-teams>
+          <dashboard-team name="team" route="{{subroute}}"></dashboard-team>
+          <dashboard-404 name="404"></dashboard-404>
+        </iron-pages>
+      </app-header-layout>
+    </app-drawer-layout>
+
+    <paper-toast id="success" duration="2000" horizontal-align="right"></paper-toast>
+    <paper-toast id="error" duration="2000" horizontal-align="right"></paper-toast>
+  </template>
+
+  <script>
+    class DashboardApp extends Polymer.Element {
+      static get is() { return 'dashboard-app'; }
+
+      static get properties() {
+        return {
+          backendUrl: {
+            type: String,
+            value: 'http://' + window.location.hostname + ':3000'
+          },
+          page: {
+            type: String,
+            reflectToAttribute: true,
+            observer: '_pageChanged'
+          },
+          routeData: Object,
+          subroute: String,
+          // This shouldn't be neccessary, but the Analyzer isn't picking up
+          // Polymer.Element#rootPath
+          rootPath: String,
+          teams: Array
+        };
+      }
+
+      static get observers() {
+        return [
+          '_routePageChanged(routeData.page)',
+        ];
+      }
+
+      constructor() {
+        super();
+
+        this._teamReloader = this._reloadTeams.bind(this);
+        this._toastHandler = this._showToast.bind(this);
+      }
+
+      connectedCallback() {
+        super.connectedCallback();
+
+        this._teamReloader();
+        this._reloadTeamInterval = window.setInterval(this._teamReloader, 1000);
+        window.addEventListener('reload-teams', e => this._teamReloader(e));
+        window.addEventListener('show-toast', e => this._toastHandler(e));
+      }
+
+      disconnectedCallback() {
+        super.disconnectedCallback();
+
+        clearInterval(this._reloadTeamInterval);
+        window.removeEventListener('show-toast', this._toastHandler);
+      }
+
+      _reloadTeams() {
+        this.$.teams.generateRequest();
+      }
+
+      _showToast(event) {
+        var toast = this.$[event.detail.type];
+        toast.text = event.detail.text;
+        toast.open();
+      }
+
+      _increment(number) { return number + 1; }
+
+      _routePageChanged(page) {
+        // If no page was found in the route data, page will be an empty string.
+        // Deault to 'teams' in that case.
+        this.page = page || 'teams';
+
+        // Close a non-persistent drawer when the page & route are changed.
+        if (!this.$.drawer.persistent) {
+          this.$.drawer.close();
+        }
+      }
+
+      _pageChanged(page) {
+        // Load page import on demand. Show 404 page if fails
+        var resolvedPageUrl = this.resolveUrl('dashboard-' + page + '.html');
+        Polymer.importHref(
+            resolvedPageUrl,
+            null,
+            this._showPage404.bind(this),
+            true);
+      }
+
+      _showPage404() {
+        this.page = '404';
+      }
+    }
+
+    window.customElements.define(DashboardApp.is, DashboardApp);
+  </script>
+</dom-module>

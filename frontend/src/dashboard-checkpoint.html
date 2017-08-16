@@ -1,0 +1,62 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="../bower_components/paper-item/paper-item.html">
+<link rel="import" href="shared-styles.html">
+
+<dom-module id="dashboard-checkpoint">
+  <template>
+    <style include="shared-styles iron-flex iron-flex-alignment">
+      :host {
+        display: block;
+        padding: 10px;
+      }
+    </style>
+    <div class="card" class="layout vertical">
+      <div class="layout horizontal justified">
+        <div class="circle self-center">[[index]]</div>
+        <paper-item>
+          <paper-item-body two-line>
+            <div>Command</div>
+            <div secondary>[[btCommand]]</div>
+          </paper-item-body>
+        </paper-item>
+
+        <paper-item>
+          <paper-item-body two-line>
+            <div>Power</div>
+            <div secondary>[[leftPower]] - [[rightPower]]</div>
+          </paper-item-body>
+        </paper-item>
+      </div>
+      <paper-item class="flex">rf-uid: [[rfUid]]</paper-item>
+    </div>
+  </template>
+
+  <script>
+    class DashboardCheckpoint extends Polymer.Element {
+      static get is() { return 'dashboard-checkpoint'; }
+
+      static get properties() {
+        return {
+          index: String,
+          btCommand: String,
+          rightPower: String,
+          leftPower: String,
+          rfUid: String
+        };
+      }
+    }
+
+    window.customElements.define(DashboardCheckpoint.is, DashboardCheckpoint);
+  </script>
+</dom-module>
